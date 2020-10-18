@@ -1,0 +1,47 @@
+'自分の予定を2ヶ月分CSVにエクスポートするプログラム
+
+Public Sub ExportMyCalendar2()
+    Const MY_CSV_FILE_NAME = "c:\mycalendar.csv"
+    Dim fldCalendar ' As Folder
+    Set fldCalendar = Application.Session.GetDefaultFolder(olFolderCalendar)
+    ExportThisMonth fldCalendar, MY_CSV_FILE_NAME
+End Sub
+
+
+Public Sub ExportThisMonth(fldCalendar, strFileName As String)
+    Dim strStart As String
+    Dim strEnd As String
+    Dim dtExport As Date
+    Dim objFSO 'As FileSystemObject
+    Dim stmCSVFile 'As TextStream
+    Dim colAppts As Items
+    Dim objAppt 'As AppointmentItem
+    Dim strLine As String
+    dtExport = Now
+    strStart = Year(Now) & "/" & Month(Now) & "/1 00:00"
+    strEnd = DateAdd("m", 2, CDate(strStart)) & " 00:00"
+    Set objFSO = CreateObject("Scripting.FileSystemObject")
+    Set stmCSVFile = objFSO.CreateTextFile(strFileName, True)
+    stmCSVFile.WriteLine """件名"",""場所"",""開始日"",""開始時刻"",""終了日"",""終了時刻"",""分類項目"",""主催者"",""必須出席者"",""任意出席者"""
+    Set colAppts = fldCalendar.Items
+    colAppts.Sort "[Start]"
+    colAppts.IncludeRecurrences = True
+    Set objAppt = colAppts.Find("[Start] < """ & strEnd & """ AND [End] >= """ & strStart & """")
+    While Not objAppt Is Nothing
+        strLine = """" & objAppt.Subject & _
+            """,""" & objAppt.Location & _
+            """,""" & FormatDateTime(objAppt.Start, vbShortDate) & _
+            """,""" & FormatDateTime(objAppt.Start, vbShortTime) & _
+            """,""" & FormatDateTime(objAppt.End, vbShortDate) & _
+            """,""" & FormatDateTime(objAppt.End, vbShortTime) & _
+            """,""" & objAppt.Categories & _
+            """,""" & objAppt.Organizer & _
+            """,""" & objAppt.RequiredAttendees & _
+            """,""" & objAppt.OptionalAttendees & _
+            """"
+       stmCSVFile.WriteLine strLine
+        Set objAppt = colAppts.FindNext
+    Wend
+    stmCSVFile.Close
+End Sub
+

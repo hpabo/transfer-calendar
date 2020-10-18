@@ -1,0 +1,92 @@
+// googleカレンダの情報を取得(使っていないサンプルコード)
+function getCalendar(){
+  const CALENDAR_ID = 'XXXXXXXX@gmail.com';
+  var myCalendar = CalendarApp.getCalendarById(CALENDAR_ID);  
+  var startDate = new Date();
+  var myEvents = new myCalendar.getEventsForDay(startDate);
+
+  myEvents.forEach(function(myEvent){
+    var title = myEvent.getTitle();
+    var StartTime = myEvent.getStartTime().toTimeString().slice(0, 8); //スタート時間を取得
+    var EndTime = myEvent.getEndTime().toTimeString().slice(0, 8); //終了時間を取得
+    Logger.log(title, StartTime, EndTime);
+  });
+}
+
+// 引数で本日を基点にした月を取得 
+// SETMONTH = 2 で2ヶ月先の日付を取得する。
+function getSetMonth() {
+  const SETMONTH = 2;
+  var date = new Date(); //本日の日時データを取得
+  var today = Utilities.formatDate(date, 'JST', 'yyyy/MM/dd');
+  //Logger.log(today);
+  var month = date.getMonth();
+  //Logger.log(month + 1);//「月」の取得は、0-11で月を取得するので＋1する。
+  month = month + SETMONTH
+  date.setMonth(month); //Dateオブジェクトに本日を基点に月を設定したい場合、monthに-1(1ヶ月前), +1(1ヶ月後) をセットする
+  //Logger.log(date); //表記 = Mon Sep 21 19:35:34 GMT+09:00 2019
+  var setMonth = Utilities.formatDate(date, 'JST', 'yyyy/MM/dd 00:00:00'); //日付の表示形式2020/09/21
+  //Logger.log(setMonth);
+  return setMonth;
+ }
+
+// 'O:'の付いたgoogleカレンダ予定を2ヶ月分の予定を読み込んでから削除する
+function getAndDelCalendarEvents() {
+  const CALENDAR_ID = 'XXXXXXXX@gmail.com'; //カレンダーID
+  const calendar = CalendarApp.getCalendarById(CALENDAR_ID);
+  myMonth = getSetMonth();
+  var arry = [["日付", "開始時間", "終了時間", "タイトル"]]
+  //const startTime = new Date();
+  var startTime = new Date(new Date().toDateString());
+  var endTime = new Date(myMonth);
+  const events = calendar.getEvents(startTime, endTime);
+  Logger.log(startTime);
+  for(var i in events){
+    Title = events[i].getTitle();
+    day = events[i].getStartTime();
+    if(Title.slice(0,2) == 'O:'){ //Titleに'O:'が入っている予定は削除    
+        Logger.log(Title,'削除');
+        events[i].deleteEvent();
+    }
+    thisDay = Utilities.formatDate(day, 'JST', 'yyyy/MM/dd');
+    starttime = Utilities.formatDate(day, 'JST', 'HH:mm');    
+    day = events[i].getEndTime();
+    endtime = Utilities.formatDate(day, 'JST', 'HH:mm');    
+    Logger.log("年月日=%s 開始時間=%s 終了時間=%s", thisDay,starttime, endtime );  
+    arry.push([thisDay,Title,starttime,endtime]); //2次元配列にデータを収納
+  }
+  return arry;
+} 
+
+
+// googleカレンダに読み込んだOutLookのcsvデータを書き込む
+function createEvent(){
+  let coulmns = [];
+  let rows = csvtoArray('fogefoge', 'mycalendar.csv')// csvデータの読込
+  var calendar = CalendarApp.getDefaultCalendar(); //インスタンス生成
+  for(let i =1; i < rows.length; i++){
+    cloumns = rows[i];     
+    var title = 'O:' + cloumns[0]; //予定タイトル
+    var startTime = new Date(cloumns[2] + ' ' + cloumns[3]); //スタート時間設定
+    var endTime = new Date(cloumns[4] + ' ' + cloumns[5]); //終了時間設定
+    var location = cloumns[1];
+    var today = Utilities.formatDate(new Date(), 'JST', 'yyyy/MM/dd');
+    if (cloumns[2] >= today){
+      calendar.createEvent(title,startTime,endTime,location); //カレンダ追加実行
+    }
+  }
+}
+
+// csvデータの読込
+function csvtoArray(folder_name, file_name) {
+    var folder = DriveApp.getFoldersByName(folder_name).next();
+    var file = folder.getFilesByName(file_name).next();
+    var csv = file.getBlob().getDataAsString("shift-jis");
+    var rows = Utilities.parseCsv(csv);
+    return rows;
+}
+
+function main(){
+  getAndDelCalendarEvents()
+  createEvent()
+}
